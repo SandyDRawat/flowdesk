@@ -1,0 +1,28 @@
+# Local data and secrets
+/data/
+/backups/
+/exports/
+*.sqlite*
+*.db
+*.db-*
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.log
+# Runtimes and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+node_modules/
+.coverage
+htmlcov/
+.pytest_cache/
+.DS_Store
+# Local provider and agent settings
+.claude/
+.codex/
+.mcp.json

@@ -1,0 +1,14 @@
+name: Commercial license inquiry
+description: Ask about a separate paid license for commercial use.
+title: "Commercial license inquiry"
+body:
+  - type: markdown
+    attributes:
+      value: "This is a public inquiry. Do not include personal, confidential, payment, or contract details. Opening this issue does not grant commercial rights."
+  - type: textarea
+    id: use
+    attributes:
+      label: Brief intended use
+      description: For example, internal company use or commercial hosting. Keep this non-sensitive.
+    validations:
+      required: true

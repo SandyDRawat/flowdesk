@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "flowdesk": {
+      "command": "/absolute/path/to/flowdesk/.venv/bin/python",
+      "args": [
+        "/absolute/path/to/flowdesk/mcp_server.py",
+        "--workspace-root",
+        "/absolute/path/to/your/project",
+        "--db",
+        "/absolute/path/to/flowdesk/data/flowdesk.sqlite3"
+      ]
+    }
+  }
+}

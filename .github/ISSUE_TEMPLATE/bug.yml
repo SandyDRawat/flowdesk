@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a problem using synthetic examples.
+body:
+  - type: markdown
+    attributes:
+      value: "Do not attach databases, API keys, private tasks, or unredacted screenshots. Use Security → Report a vulnerability for security issues."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce with synthetic data
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version, OS, Python, and browser
+    validations:
+      required: true
