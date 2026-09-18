@@ -40,3 +40,7 @@
 .daily-plan-surface .board::-webkit-scrollbar-track{background:#e9eee7;border-radius:8px}
 .daily-plan-surface .board::-webkit-scrollbar-thumb{background:#9cad9d;border-radius:8px;border:2px solid #e9eee7}
 @media(max-width:650px){.daily-plan-surface .section-head{flex-wrap:wrap}.daily-plan-surface .board{grid-auto-columns:min(240px,100%)}.daily-plan-surface .board>.column{width:100%}.board-view-controls{margin-left:auto}}
+
+button.danger{color:#b42318;border-color:#f2b8b5}button.danger:hover{background:#fff1f0}#delete-error,#trash-error{color:#b42318}
+
+.task-navigation{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}.task-navigation span{font-size:12px;color:var(--muted)}.task-navigation button{padding:6px 12px;font-size:18px}.task-navigation button:disabled{opacity:.35;cursor:default}

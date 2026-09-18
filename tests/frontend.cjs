@@ -8,12 +8,13 @@ const sandbox={console,Date,Intl,URL,Blob,AbortController,setTimeout:()=>1,clear
 vm.createContext(sandbox);vm.runInContext(fs.readFileSync('static/app.js','utf8'),sandbox);
 (async()=>{
   await new Promise(r=>setImmediate(r));
-  for(const name of ['today','inbox','all','insights','activity','settings','reports','communications']){vm.runInContext(`navigate('${name}')`,sandbox);assert.ok(elements.get('#view').innerHTML.length>100,`${name} rendered`);assert.ok(!elements.get('#view').innerHTML.includes('<script>unsafe</script>'),'user input escaped');}
+  for(const name of ['today','inbox','all','insights','activity','settings','reports','communications','trash']){vm.runInContext(`navigate('${name}')`,sandbox);assert.ok(elements.get('#view').innerHTML.length>100,`${name} rendered`);assert.ok(!elements.get('#view').innerHTML.includes('<script>unsafe</script>'),'user input escaped');}
   await new Promise(r=>setImmediate(r));
   vm.runInContext("navigate('today')",sandbox);
   assert.ok(elements.get('#view').innerHTML.includes('inbox-rail'),'My Day inbox rail exists');
   vm.runInContext("inboxCollapsed=true;render()",sandbox);assert.ok(elements.get('#view').innerHTML.includes('inbox-rail collapsed'),'rail collapses');
   vm.runInContext("navigate('inbox')",sandbox);assert.ok(elements.get('#view').innerHTML.includes('daily-list-panel'),'Inbox has daily plan column');
+  const nav=vm.runInContext('taskNavigation(1)',sandbox);assert.ok(nav.includes('Previous task')&&nav.includes('Next task'),'task navigation arrows');
   const time=vm.runInContext('dailyTime()',sandbox);assert.equal(time.total,7200);assert.equal(time.union,5400);
   fixture.sessions=[{task_id:1,started_at:'2026-09-16T18:00:00Z',ended_at:'2026-09-16T19:00:00Z'}];await vm.runInContext('refresh()',sandbox);
   const midnight=vm.runInContext('dailyTime()',sandbox);assert.ok(Math.abs(midnight.total-1800)<.01,'session clipped at local midnight');
@@ -67,6 +68,6 @@ vm.createContext(sandbox);vm.runInContext(fs.readFileSync('static/app.js','utf8'
   await handlers.submit({preventDefault(){},target:editForm});
   assert.equal(calls.filter(c=>c.path==='/api/create').length,beforeCreate+1,'new-task save also dispatches');
   fixture.tasks=[];fixture.plans=[];fixture.sessions=[];await vm.runInContext('refresh()',sandbox);
-  for(const name of ['today','inbox','all','insights','activity','settings','reports','communications'])vm.runInContext(`navigate('${name}')`,sandbox);
+  for(const name of ['today','inbox','all','insights','activity','settings','reports','communications','trash'])vm.runInContext(`navigate('${name}')`,sandbox);
   console.log('Frontend contracts passed: seven populated/empty views, both inbox/day surfaces, collapse, drag/drop handlers, historical protection, daily/weekly reports, escaping, timing, and WebMCP adapter contracts.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

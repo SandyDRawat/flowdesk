@@ -50,7 +50,7 @@ class Store:
         with self.db() as db:
             db.executescript(SCHEMA)
             columns={r[1] for r in db.execute('PRAGMA table_info(tasks)')}
-            for name,definition in [('project_path',"TEXT NOT NULL DEFAULT ''"),('kind',"TEXT NOT NULL DEFAULT 'task'"),('waiting_on',"TEXT NOT NULL DEFAULT ''"),('waiting_note',"TEXT NOT NULL DEFAULT ''"),('contact',"TEXT NOT NULL DEFAULT ''"),('assignee',"TEXT NOT NULL DEFAULT ''"),('related_task_id','INTEGER REFERENCES tasks(id)'),('subtask_position','INTEGER NOT NULL DEFAULT 0')]:
+            for name,definition in [('project_path',"TEXT NOT NULL DEFAULT ''"),('kind',"TEXT NOT NULL DEFAULT 'task'"),('waiting_on',"TEXT NOT NULL DEFAULT ''"),('waiting_note',"TEXT NOT NULL DEFAULT ''"),('contact',"TEXT NOT NULL DEFAULT ''"),('assignee',"TEXT NOT NULL DEFAULT ''"),('related_task_id','INTEGER REFERENCES tasks(id)'),('subtask_position','INTEGER NOT NULL DEFAULT 0'),('deleted_at','TEXT')]:
                 if name not in columns: db.execute(f'ALTER TABLE tasks ADD COLUMN {name} {definition}')
             for k,v in DEFAULTS.items(): db.execute('INSERT OR IGNORE INTO settings VALUES (?,?)',(k,json.dumps(v)))
             db.execute('INSERT OR IGNORE INTO settings VALUES (?,?)',('last_rollover_day',json.dumps(self.today(db))))
@@ -124,6 +124,7 @@ class Store:
             if db is not None:
                 parent=self.task(db,t['related_task_id']);seen=set()
                 while parent:
+                    if parent['deleted_at']: raise ValueError('Restore the parent task from Trash first.')
                     if parent['id'] in seen or (old and parent['id']==old['id']): raise ValueError('Subissues cannot form a circular parent link.')
                     seen.add(parent['id'])
                     parent=self.task(db,parent['related_task_id']) if parent['related_task_id'] else None
@@ -168,6 +169,8 @@ class Store:
             self.rollover(db)
             today=self.today(db)
             tid=data.get('id')
+            if tid is not None and action!='restore-deleted' and self.task(db,tid)['deleted_at']:
+                raise ValueError('Restore this task from Trash before changing it.')
             if action=='create':
                 t=self.validate_task(data,db=db); stamp=now()
                 keys=list(t); vals=list(t.values())
@@ -234,6 +237,24 @@ class Store:
                 if not isinstance(ids,list) or len(ids)!=len(set(ids)) or set(ids)!=set(existing): raise ValueError('The plan changed. Refresh and try again.')
                 for pos,i in enumerate(ids): db.execute('UPDATE plans SET position=? WHERE day=? AND task_id=?',(pos,day,i))
                 self.event(db,None,'plan_reordered',{'day':day,'ids':ids})
+            elif action=='delete':
+                t=self.task(db,tid)
+                if data.get('confirmed') is not True: raise ValueError('Confirm moving this task to Trash.')
+                if db.execute('SELECT 1 FROM tasks WHERE related_task_id=? AND deleted_at IS NULL LIMIT 1',(tid,)).fetchone():
+                    raise ValueError('Move or delete the linked subissues and communications before deleting this task.')
+                if t['status']=='in_progress': self.change_status(db,tid,'todo',today)
+                stamp=now()
+                db.execute('UPDATE tasks SET archived=1,deleted_at=?,updated_at=? WHERE id=?',(stamp,stamp,tid))
+                self.event(db,tid,'edited',{'archived':{'from':t['archived'],'to':1},'deleted_at':{'from':None,'to':stamp}})
+                self.event(db,tid,'task_deleted',{})
+            elif action=='restore-deleted':
+                t=self.task(db,tid)
+                if not t['deleted_at']: raise ValueError('This task is not in Trash.')
+                if t['related_task_id'] and self.task(db,t['related_task_id'])['deleted_at']:
+                    raise ValueError('Restore the parent task from Trash first.')
+                db.execute('UPDATE tasks SET archived=0,deleted_at=NULL,updated_at=? WHERE id=?',(now(),tid))
+                self.event(db,tid,'edited',{'archived':{'from':t['archived'],'to':0},'deleted_at':{'from':t['deleted_at'],'to':None}})
+                self.event(db,tid,'task_restored',{})
             elif action=='archive':
                 t=self.task(db,tid)
                 if t['status']=='in_progress': raise ValueError('Pause or finish the task before archiving.')
@@ -268,7 +289,7 @@ class Store:
                 t['actual_seconds']=sum(max(0,((parse_time(s['ended_at']) if s['ended_at'] else stamp)-parse_time(s['started_at'])).total_seconds()) for s in ts)
                 t['running_since']=next((s['started_at'] for s in ts if not s['ended_at']),None)
             settings=self.settings(db)
-            return {'today':today,'day':day,'settings':settings,'tasks':tasks,'sessions':sessions,'plans':[dict(r) for r in db.execute('SELECT * FROM plans WHERE day=? ORDER BY position,task_id',(day,))],
+            return {'today':today,'day':day,'settings':settings,'tasks':[t for t in tasks if not t['deleted_at']],'deleted_tasks':[t for t in tasks if t['deleted_at']],'sessions':sessions,'plans':[dict(r) for r in db.execute('SELECT * FROM plans WHERE day=? ORDER BY position,task_id',(day,))],
                 'events':[dict(r) for r in db.execute('SELECT * FROM events ORDER BY id DESC LIMIT 300')],
                 'history_days':[dict(r) for r in db.execute('SELECT day,COUNT(*) AS count FROM plans GROUP BY day ORDER BY day DESC LIMIT 365')],
                 'service':{'managed':os.environ.get('FLOWDESK_MANAGED')=='1','version':VERSION},
@@ -311,6 +332,7 @@ class Store:
                 tid=cursor.lastrowid; self.event(db,tid,'created',t)
                 if t['related_task_id']:db.execute('UPDATE tasks SET subtask_position=(SELECT COALESCE(MAX(subtask_position),0)+1 FROM tasks WHERE related_task_id=? AND id!=?) WHERE id=?',(t['related_task_id'],tid,tid))
             else:
+                if found['deleted_at']: raise ValueError('This task is in Trash. Restore it before capturing it again.')
                 tid=found['id']
                 if not found['project_path'] and t['project_path']:
                     db.execute('UPDATE tasks SET project_path=?,updated_at=? WHERE id=?',(t['project_path'],now(),tid))

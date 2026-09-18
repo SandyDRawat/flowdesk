@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Delete tasks and communications with confirmation; restore them from Trash. Running timers stop, history remains, and linked subissues are protected.
+- Navigate between task details using previous and next arrows.
+
 ## 1.3.0 — Initial public source release
 
 - Local task inbox, daily planning, rollover, timers, reports, and configurable running limits.
