@@ -169,7 +169,7 @@ class Store:
             self.rollover(db)
             today=self.today(db)
             tid=data.get('id')
-            if tid is not None and action!='restore-deleted' and self.task(db,tid)['deleted_at']:
+            if tid is not None and action not in ('create','settings','restore-deleted') and self.task(db,tid)['deleted_at']:
                 raise ValueError('Restore this task from Trash before changing it.')
             if action=='create':
                 t=self.validate_task(data,db=db); stamp=now()
@@ -182,6 +182,10 @@ class Store:
                     date_value(data['day'])
                     if data['day']<today: raise ValueError('Plan new tasks for today or a future day.')
                     self.add_plan(db,tid,data['day'])
+                initial_status=data.get('initial_status','not_started')
+                if initial_status!='not_started':
+                    if data.get('day',today)!=today: raise ValueError('New tasks on future days must begin as Not started.')
+                    self.change_status(db,tid,initial_status,today,data)
             elif action=='reorder-subissues':
                 self.task(db,tid)
                 ids=data.get('ids')

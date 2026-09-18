@@ -67,6 +67,7 @@ vm.createContext(sandbox);vm.runInContext(fs.readFileSync('static/app.js','utf8'
   const beforeCreate=calls.filter(c=>c.path==='/api/create').length;
   await handlers.submit({preventDefault(){},target:editForm});
   assert.equal(calls.filter(c=>c.path==='/api/create').length,beforeCreate+1,'new-task save also dispatches');
+  assert.equal(Object.hasOwn(JSON.parse(calls.filter(c=>c.path==='/api/create').at(-1).options.body),'id'),false,'new task omits blank id');
   fixture.tasks=[];fixture.plans=[];fixture.sessions=[];await vm.runInContext('refresh()',sandbox);
   for(const name of ['today','inbox','all','insights','activity','settings','reports','communications','trash'])vm.runInContext(`navigate('${name}')`,sandbox);
   console.log('Frontend contracts passed: seven populated/empty views, both inbox/day surfaces, collapse, drag/drop handlers, historical protection, daily/weekly reports, escaping, timing, and WebMCP adapter contracts.');
