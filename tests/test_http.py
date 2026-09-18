@@ -59,3 +59,14 @@ class HTTPTests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as error:self.request('/api/ai-key',{'key':key},{'Origin':'https://evil.example'})
         self.assertEqual(error.exception.code,403);error.exception.close()
         with self.request('/api/ai-key',{'remove':True}) as r:self.assertFalse(json.load(r)['configured'])
+
+    def test_new_task_dialog_blank_id_and_column_destination(self):
+        for status in ['not_started','todo','in_progress','waiting','blocked','assigned','done']:
+            with self.request('/api/create',{'id':'','title':'Dialog example','initial_status':status,'assignee':'Reviewer'}) as r:tid=json.load(r)['id']
+            with self.request('/api/task?id='+str(tid)) as r:self.assertEqual(json.load(r)['task']['status'],status)
+            if status=='in_progress':
+                with self.request('/api/status',{'id':tid,'status':'todo'}) as r:self.assertEqual(r.status,200)
+        with self.request('/api/state') as r:before=len(json.load(r)['tasks'])
+        with self.assertRaises(urllib.error.HTTPError) as error:self.request('/api/create',{'id':'','title':'Incomplete assignment','initial_status':'assigned'})
+        error.exception.close()
+        with self.request('/api/state') as r:self.assertEqual(len(json.load(r)['tasks']),before)
